@@ -1,7 +1,4 @@
-## Grab the tables from the page and use the html_table function to extract the tables.
-## You need to subset temp to find the data you're interested in (HINT: html_table())
-
-setwd("C:\\Users\\drmiller1220\\Documents\\GitHub\\PS4")
+setwd("C:\\Users\\drmiller1220\\Documents\\GitHub\\PS4") #setting working directory
 
 library(rvest)   # loading in required library 
 wikiURL <- 'https://en.wikipedia.org/wiki/List_of_United_States_presidential_elections_by_popular_vote_margin'
@@ -39,8 +36,8 @@ wiki_data[,-c(3,4,5,11,12)] <- apply(wiki_data[,-c(3,4,5,11,12)], MARGIN=2,
 colnames(wiki_data) <- c("Election_Number", "Election_Year", "Winner", "Winner_Party",
                          "Electoral_College_Proportion", "Electoral_College_Percentage",
                          "Popular_Vote_Percentage", "Popular_Vote_Margin", 
-                         "Total_Popular_Vote", "Total_Popular Vote_Margin", "Runner-up",
-                         "Runner-up_Party", "Turnout_Percentage")
+                         "Total_Popular_Vote", "Total_Popular Vote_Margin", "Runner_up",
+                         "Runner_up_Party", "Turnout_Percentage")
 # rename all columns to more intuitive names
 wiki_data <- wiki_data[order(wiki_data$Election_Year),]
 # sorting data by election year for plotting purposes
@@ -60,22 +57,22 @@ plot(NULL,
 # creating a blank plot with the requisite labels and xlim and ylim
 points(wiki_data$Election_Year[which(wiki_data$Winner_Party=="Rep.")],
        wiki_data$Electoral_College_Percentage[which(wiki_data$Winner_Party=="Rep.")],
-       pch=19, col="firebrick1")
+       pch=1, col="firebrick1")
 # adding solid red points for winning Republicans' EC votes; which function selects on years
 # for which the Republican candidate won
 points(wiki_data$Election_Year[which(wiki_data$Winner_Party=="Dem.")],
        wiki_data$Electoral_College_Percentage[which(wiki_data$Winner_Party=="Dem.")],
-       pch=19, col="dodgerblue")
+       pch=1, col="dodgerblue")
 # adding solid red points for winning Democrats' EC votes which function selects on years
 # for which the Democratic candidate won
 points(wiki_data$Election_Year[which(wiki_data$Winner_Party=="Rep.")],
        wiki_data$Popular_Vote_Percentage[which(wiki_data$Winner_Party=="Rep.")],
-       pch=1, col="firebrick1")
+       pch=19, col="firebrick1")
 # adding solid red points for winning Republicans' popular votes; which function selects on years
 # for which the Republican candidate won
 points(wiki_data$Election_Year[which(wiki_data$Winner_Party=="Dem.")],
        wiki_data$Popular_Vote_Percentage[which(wiki_data$Winner_Party=="Dem.")],
-       pch=1, col="dodgerblue")
+       pch=19, col="dodgerblue")
 # adding solid red points for winning Democrats' popular votes; which function selects on years
 # for which the Democratic candidate won
 segments(x0=wiki_data$Election_Year[which(wiki_data$Winner_Party=="Rep.")],
@@ -105,6 +102,16 @@ legend("center",legend=c("% of Popular Vote Received",
        lty = c(NA,NA,4,1,1), # providing line type for each item in legend
        pch=c(19,1,NA,NA,NA)) # providing point type for each item in legend
 
+# This plot presents the % of the popular vote (solid point) and electoral college vote
+# (hollow point) received for the candidate who won the presidency in each election, and
+# a dotted line to connect the two points (i.e. the difference in % of type of votes
+# received).  The points/lines are color coded to indicate which party won the White
+# House in each election.  Looking at the plot, we can see the trend in difference between
+# the electoral college and popular votes received by the winning candidate over time;
+# whereas from the 1930s through 1996 the gap between the popular and electoral college 
+# votes was exceptionally large, most other elections saw smaller gaps between these types
+# of votes.
+
 par(opar) # resetting par for second plot
 
 layout(matrix(c(1,2), ncol=1, byrow=FALSE), heights = c(0.75,0.25))
@@ -132,6 +139,12 @@ legend("center",legend=c("% of Popular Vote Received",
        lty = c(1,1,1)) # providing line types for legend
 dev.off() # closing the pdf file
 
+# The plot presents trend lines of the % of the popular (green) and electoral college (red)
+# votes received, as well as the turnout rate (blue), for each presidential election.
+# Looking at the plot, we can see that turnout sharply declined between 1900 and the
+# 1920s/1930s, and that large disparities between the popular and electoral college votes
+# have become more common as turnout has decreased.
+
 ######################################
 
 library(htmltab) # loading in a different library which can more easily handle
@@ -156,50 +169,82 @@ for(i in unique(wiki_table2$Year)){ # initializing a loop to iterate over each
     # over each presidential candidate in year i
     candidate_votes <- sum(as.numeric(year_df$`Electoral votes`[which(year_df$`Presidential candidate`==j)]))
     # summing the votes received by candidate j, if multiple rows exist for the candidate
-    candidate_vote_totals <- as.data.frame(rbind(candidate_vote_totals, cbind(j, candidate_votes)), stringsAsFactors=FALSE)
-    # binding the extant data frame for all years i, and this year i, and then converting
-    # object back to a data frame
+    candidate_name_strings <- strsplit(j, " ")[[1]]
+    # splitting the string for each candidate's name
+    candidate_last_name <- candidate_name_strings[length(candidate_name_strings)]
+    # extracting the candidate's last name
+    candidate_last_name <- ifelse(candidate_last_name=="II", "Stevenson", 
+                                  candidate_last_name)
+    # applying the "Stevenson correction"; the last element of the strsplit for
+    # Adlai Stevenson is "II," because he is "Adlai Stevenson II"; we correct here
+    # with an ifelse statement
+    candidate_vote_totals <- as.data.frame(rbind(candidate_vote_totals, 
+                                             cbind(candidate_last_name, candidate_votes)), 
+                                             stringsAsFactors=FALSE)
+    # binding the extant data frame for the vote totals for 
+    # each candidate in this year i to that for this candidate j, and then 
+    # converting object back to a data frame
   }
   candidate_vote_totals[,2] <- as.numeric(candidate_vote_totals[,2])
   # converting vote totals column from a factor to numeric
-  candidate_vote_totals <- candidate_vote_totals[order(candidate_vote_totals$candidate_votes, decreasing=TRUE),]
-  # sorting the data frame by the vote totals column in descending order
-  year_row <- cbind(i, candidate_vote_totals[1,1], candidate_vote_totals[1,2],
-                    candidate_vote_totals[2,1], candidate_vote_totals[2,2])
-  # creating a row for the election year which contains the year, the name and
-  # vote total for the candidate with the highest EC total, and the name and the
-  # vote total for the candidate with the second-highest vote total
-  electoral_vote_table <- rbind(electoral_vote_table, year_row)
-  # binding the year row to a data frame which will have the vote totals for the
-  # candidates with the highest and second-highest margins of victory for each year
+  candidate_vote_totals$year <- i
+  # adding a column to the year-specific data frame which contains the year, for each
+  # candidate
+  electoral_vote_table <- rbind(electoral_vote_table, candidate_vote_totals)
+  # binding the year-specific data frame to a data frame which will have the vote totals 
+  # for the candidates with the highest and second-highest margins of victory for each year
 }
 
-colnames(electoral_vote_table) <- c("Election_Year", "Winner", "Winner_Electoral_Votes",
-                                    "Runner-up", "Runner-up_Electoral_Votes")
+colnames(electoral_vote_table) <- c("Candidate", "Electoral_Votes", "Election_Year")
 # renaming the columns of the data frame with the EC vote totals
 rownames(electoral_vote_table) <- 1:length(electoral_vote_table$Election_Year)
 # in the course of the loops, the row names became NULL; we replace the NULL row names
 # with generic indicies
-electoral_vote_table[,c(1,3,5)] <- apply(electoral_vote_table[,c(1,3,5)], MARGIN=2, function(x) as.numeric(x))
-# converting the vote total columns from factor to numeric
-electoral_vote_table[,c(2,4)] <- apply(electoral_vote_table[,c(2,4)], MARGIN=2, function(x) as.character(x))
+electoral_vote_table[,c(2,3)] <- apply(electoral_vote_table[,c(2,3)], MARGIN=2, function(x) as.numeric(x))
+# converting the vote total and year columns from factor to numeric
+electoral_vote_table[,c(1)] <- sapply(electoral_vote_table[,c(1)], function(x) as.character(x))
 # converting the name columns from factor to character
 
 
-electoral_vote_table[which(electoral_vote_table$Election_Year==1872), 
-                     "Runner-up_Electoral_Votes"] <- 42
+electoral_vote_table[which(electoral_vote_table$Election_Year==1872 & 
+                             electoral_vote_table$Candidate=="Hendricks"), 
+                     "Electoral_Votes"] <- 42
 # in the 1872 election, Wikipedia reports that the Democratic candidate won 42
 # electoral votes, but these votes were distributed among different VP tickets
 #depending on the historical source consulted, and the columns
 # yielded from the table via scraping yield both minimum and maximum possibilities for
 # each ticker; because there is no easy way to account for this idiosynchracy, we
 # manually replace the cell
-electoral_vote_table[which(electoral_vote_table$Election_Year==1824),2:5] <- 
-  c("John Quincy Adams", 84, "Andrew Jackson", 99)
-# in the 1824 election, Jackson won a plurality of electoral college votes, but ultimately
-# lost the presidency in the House; this is only instance in which this occurs, so we
-# manually edit the elements of this row
 
-complete_table <- merge(wiki_data, electoral_vote_table, by="Election_Year")
-# we merge the table from part 1, and the table we have created in part 2, to yield
-# a table containing information from both tables by election year
+# prepping data frame from part 1 for merging
+
+wiki_data$Winner <- sapply(1:length(wiki_data$Winner), 
+                           function(x) strsplit(wiki_data$Winner, ",")[[x]][1])
+# the name column in the part 1 data frame has the candidate's last name, then a comma,
+# and then the candidate's full name.  For merging purposes, because the winner and 
+# runner-up have unique names in each year, we only need the candidate's last name.
+# Thus, we split the string at the comma, and retain only the last name before the
+# comma as the character string in the Winner column
+
+wiki_data$Runner_up <- sapply(1:length(wiki_data$`Runner_up`), 
+                           function(x) strsplit(wiki_data$`Runner_up`, ",")[[x]][1])
+# we repeat the sapply function immediately above for the runner-up
+
+colnames(electoral_vote_table)[c(1,2)] <- c("Winner","Winner_Electoral_Votes")
+# to merge the tables, the column names need to be identical, and the electoral college
+# votes we add in should be identifiable to the winner.  Thus, we rename the columns.
+
+complete_table <- merge(wiki_data, electoral_vote_table, by=c("Election_Year","Winner"))
+# we merge the table from part 1, and the winner EC votes 2, to yield
+# a table containing the EC votes of the winner by year
+
+colnames(electoral_vote_table)[c(1,2)] <- c("Runner_up","Runner_up_Electoral_Votes")
+# to merge the tables, the column names need to be identical, and the electoral college
+# votes we add in should be identifiable to the runner-up.  Thus, we rename the columns.
+
+complete_table <- merge(complete_table, electoral_vote_table, 
+                        by=c("Election_Year","Runner_up"))
+# we merge the table from part 1, and the winner EC votes 2, to yield
+# a table containing the EC votes of the runner-up by year
+
+save(complete_table, file="complete_table.RData")
